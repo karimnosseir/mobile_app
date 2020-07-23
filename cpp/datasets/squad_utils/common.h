@@ -15,6 +15,8 @@ limitations under the License.
 #ifndef MLPERF_DATASETS_SQUAD_UTILS_COMMON_H_
 #define MLPERF_DATASETS_SQUAD_UTILS_COMMON_H_
 
+#include <codecvt>
+#include <locale>
 #include <string>
 #include <vector>
 
@@ -33,18 +35,25 @@ namespace mobile {
 std::string get_final_text(const std::string& pred_tokens,
                            const std::string& orig_tokens,
                            const std::string& orig_words) {
+  // Strings may contain accent characters, we need to use u32string to
+  // get the correct size of the strings.
+  std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
+  std::u32string pred_tokens_utf32 = conv.from_bytes(pred_tokens);
+  std::u32string orig_tokens_utf32 = conv.from_bytes(orig_tokens);
+  std::u32string orig_words_utf32 = conv.from_bytes(orig_words);
+
   // Return orig_text if cannot find pred_text in it.
-  int start_pos = orig_tokens.find(pred_tokens);
+  int start_pos = orig_tokens_utf32.find(pred_tokens_utf32);
   if (start_pos == std::string::npos) return orig_words;
-  int end_pos = start_pos + pred_tokens.size() - 1;
+  int end_pos = start_pos + pred_tokens_utf32.size() - 1;
 
   // Keep track of non-space charaters in orig_tokens and orig_words. The
   // non-space version of them are expected to be the same. With that condition,
-  //  we can project the characters in `orig_tokens` back to `orig_words` using
+  // we can project the characters in `orig_tokens` back to `orig_words` using
   // the character-to-character alignment.
   int ns_start_pos = -1, ns_end_pos = -1;
-  for (int i = 0, count = 0; i < orig_tokens.size(); ++i) {
-    if (orig_tokens[i] == ' ') continue;
+  for (int i = 0, count = 0; i < orig_tokens_utf32.size(); ++i) {
+    if (orig_tokens_utf32[i] == ' ') continue;
     if (start_pos == i) ns_start_pos = count;
     if (end_pos == i) ns_end_pos = count;
     ++count;
@@ -52,15 +61,16 @@ std::string get_final_text(const std::string& pred_tokens,
   if (ns_start_pos == -1 || ns_end_pos == -1) return orig_words;
 
   int orig_start_pos = -1, orig_end_pos = -1;
-  for (int i = 0, count = 0; i < orig_words.size(); ++i) {
-    if (orig_words[i] == ' ') continue;
+  for (int i = 0, count = 0; i < orig_words_utf32.size(); ++i) {
+    if (orig_words_utf32[i] == ' ') continue;
     if (ns_start_pos == count) orig_start_pos = i;
     if (ns_end_pos == count) orig_end_pos = i;
     ++count;
   }
-  if (orig_start_pos == -1 || orig_end_pos == -1) return orig_words;
 
-  return orig_words.substr(orig_start_pos, orig_end_pos - orig_start_pos + 1);
+  if (orig_start_pos == -1 || orig_end_pos == -1) return orig_words;
+  return conv.to_bytes(orig_words_utf32.substr(
+      orig_start_pos, orig_end_pos - orig_start_pos + 1));
 }
 
 // Normalize is used to normalize answer and ground truth for comparision.
@@ -68,7 +78,8 @@ std::string Normalize(const std::string& text) {
   // First, remove all artiles and spaces.
   std::vector<std::string> words = absl::StrSplit(text, ' ');
   auto is_article = [](const std::string& x) {
-    return (x == "a" || x == "an" || x == "the");
+    return (x == "a" || x == "an" || x == "the" || x == "A" || x == "An" ||
+            x == "The");
   };
   words.erase(std::remove_if(words.begin(), words.end(), is_article),
               words.end());
