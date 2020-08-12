@@ -70,7 +70,8 @@ public final class RunMLPerfWorker implements Handler.Callback {
     ModelConfig modelConfig = taskConfig.getModel(data.modelIdx);
     DatasetConfig dataset = taskConfig.getDataset();
     boolean useDummyDataSet =
-        !dataset.getPath().contains("@assets/") && !new File(dataset.getPath()).isDirectory();
+        !dataset.getPath().contains("@assets/")
+            && !new File(MLPerfTasks.getLocalPath(dataset.getPath())).isDirectory();
     String modelName = modelConfig.getName();
     String runtime = computeRuntimeString(data.numThreads, data.delegate);
     replyWithUpdateMessage(
@@ -96,7 +97,7 @@ public final class RunMLPerfWorker implements Handler.Callback {
         switch (dataset.getType()) {
           case IMAGENET:
             builder.useImagenet(
-                dataset.getPath(),
+                MLPerfTasks.getLocalPath(dataset.getPath()),
                 MLPerfTasks.getLocalPath(dataset.getGroundtruthSrc()),
                 modelConfig.getOffset(),
                 /*imageWidth=*/ 224,
@@ -105,7 +106,7 @@ public final class RunMLPerfWorker implements Handler.Callback {
             break;
           case COCO:
             builder.useCoco(
-                dataset.getPath(),
+                MLPerfTasks.getLocalPath(dataset.getPath()),
                 MLPerfTasks.getLocalPath(dataset.getGroundtruthSrc()),
                 modelConfig.getOffset(),
                 /*numClasses=*/ 91,
@@ -119,7 +120,7 @@ public final class RunMLPerfWorker implements Handler.Callback {
             break;
           case ADE20K:
             builder.useAde20k(
-                dataset.getPath(),
+                MLPerfTasks.getLocalPath(dataset.getPath()),
                 dataset.getGroundtruthSrc(),
                 /*numClasses=*/ 31,
                 /*imageWidth=*/ 512,

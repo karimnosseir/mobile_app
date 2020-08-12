@@ -26,6 +26,7 @@ import org.mlperf.proto.MLPerfConfig;
 /** This class reads the tasks.pbtxt and provides quick inference to its values. */
 final class MLPerfTasks {
   private static final String TAG = "MLPerfTasks";
+  private static final String ZIP = ".zip";
   private static MLPerfConfig mlperfTasks;
   private static String localDir;
 
@@ -34,7 +35,7 @@ final class MLPerfTasks {
 
   public static MLPerfConfig getConfig(Context context) {
     if (mlperfTasks == null) {
-      localDir = context.getFilesDir().getPath();
+      localDir = context.getExternalFilesDir("cache").getAbsolutePath();
       SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(context);
       String customConfig =
           sharedPref.getString(context.getString(R.string.custom_config_key), null);
@@ -61,8 +62,15 @@ final class MLPerfTasks {
     return true;
   }
 
+  public static boolean isZipFile(String path) {
+    return path.endsWith(ZIP);
+  }
+
   public static String getLocalPath(String path) {
     String filename = new File(path).getName();
+    if (isZipFile(filename)) {
+      filename = filename.substring(0, filename.length() - ZIP.length());
+    }
     return localDir + "/cache/" + filename;
   }
 }

@@ -3,7 +3,7 @@ task {
   dataset {
     name: "Imagenet 2012"
     type: IMAGENET
-    path: "/sdcard/mlperf_datasets/imagenet/img/"
+    path: "https://github.com/mlperf/mobile_app/raw/model_repo_v0.7/datasets/imagenet.zip"
     groundtruth_src: "@assets/imagenet_val.txt"
   }
   model {
@@ -41,7 +41,7 @@ task {
   dataset {
     name: "Coco 2017"
     type: COCO
-    path: "/sdcard/mlperf_datasets/coco/img/"
+    path: "https://github.com/mlperf/mobile_app/raw/model_repo_v0.7/datasets/coco.zip"
     groundtruth_src: "@assets/coco_val.pbtxt"
   }
   model {
@@ -97,7 +97,7 @@ task {
   dataset {
     name: "ADE20k"
     type: ADE20K
-    path: "/sdcard/mlperf_datasets/ade20k/images"
+    path: "https://github.com/mlperf/mobile_app/raw/model_repo_v0.7/datasets/ade20k.zip"
     groundtruth_src: "/sdcard/mlperf_datasets/ade20k/annotations"
   }
   model {

@@ -49,6 +49,7 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -62,6 +63,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import org.mlperf.proto.DatasetConfig;
 import org.mlperf.proto.MLPerfConfig;
 import org.mlperf.proto.ModelConfig;
@@ -502,20 +505,27 @@ public class MLPerfEvaluation extends AppCompatActivity implements Handler.Callb
           }
         }
         DatasetConfig dataset = task.getDataset();
-        if (dataset.getPath().startsWith(ASSETS_PREFIX)
-            && !new File(MLPerfTasks.getLocalPath(dataset.getPath())).canRead()) {
+        if (isDatasetFileNeedExtract(dataset.getPath())) {
           if (!extractFile(dataset.getPath())) {
             success = false;
           }
         }
-        if (dataset.getGroundtruthSrc().startsWith(ASSETS_PREFIX)
-            && (!new File(MLPerfTasks.getLocalPath(dataset.getGroundtruthSrc())).canRead())) {
+        if (isDatasetFileNeedExtract(dataset.getGroundtruthSrc())) {
           if (!extractFile(dataset.getGroundtruthSrc())) {
             success = false;
           }
         }
       }
       return null;
+    }
+
+    private boolean isDatasetFileNeedExtract(String path) {
+      if (new File(MLPerfTasks.getLocalPath(path)).canRead()) {
+        return false;
+      }
+      return path.startsWith(ASSETS_PREFIX)
+          || path.startsWith("http://")
+          || path.startsWith("https://");
     }
 
     private boolean extractFile(String src) {
@@ -545,7 +555,14 @@ public class MLPerfEvaluation extends AppCompatActivity implements Handler.Callb
         }
         OutputStream out = new FileOutputStream(tmpFile, /*append=*/ false);
         copyFile(in, out);
-        tmpFile.renameTo(destFile);
+        if (MLPerfTasks.isZipFile(src)) {
+          if (!unZip(tmpFile, dest)) {
+            return false;
+          }
+          Log.d(TAG, "Unziped " + src + " to " + dest);
+        } else {
+          tmpFile.renameTo(destFile);
+        }
       } catch (IOException e) {
         Log.e(TAG, "Failed to prepare file " + dest + ": " + e.getMessage());
         error = "Error: " + e.getMessage();
@@ -562,6 +579,44 @@ public class MLPerfEvaluation extends AppCompatActivity implements Handler.Callb
       while ((read = in.read(buffer)) != -1) {
         out.write(buffer, 0, read);
       }
+    }
+
+    private boolean unZip(File inputFile, String dest) {
+      InputStream is;
+      ZipInputStream zis;
+      File destFile = new File(dest);
+      destFile.mkdirs();
+      try {
+        String filename;
+        is = new FileInputStream(inputFile);
+        zis = new ZipInputStream(new BufferedInputStream(is));
+        ZipEntry ze;
+        byte[] buffer = new byte[1024];
+        int count;
+
+        while ((ze = zis.getNextEntry()) != null) {
+          filename = ze.getName();
+          // Need to create directories if not exists.
+          if (ze.isDirectory()) {
+            File fmd = new File(dest, filename);
+            fmd.mkdirs();
+            continue;
+          }
+
+          FileOutputStream fout = new FileOutputStream(new File(dest, filename));
+          while ((count = zis.read(buffer)) != -1) {
+            fout.write(buffer, 0, count);
+          }
+          fout.close();
+          zis.closeEntry();
+        }
+
+        zis.close();
+      } catch (IOException e) {
+        Log.e(TAG, "Failed to unzip file " + dest + ".zip: " + e.getMessage());
+        return false;
+      }
+      return true;
     }
 
     @Override
