@@ -174,9 +174,14 @@ float Squad::ComputeAccuracy() {
                                           sample.query_tokens_length_];
     GroundTruthRecord gt_record(
         gt_reader_.ReadRecord(qas_id_to_ground_truth_[qas_id]));
+    if (gt_record.tokens.size() <= doc_start ||
+        gt_record.words.size() <= doc_start)
+      continue;
     std::string orig_tokens = gt_record.tokens[doc_start];
     std::string orig_words = gt_record.words[doc_start];
     for (int i = doc_start + 1; i <= doc_end; ++i) {
+      if (gt_record.tokens.size() <= i ||
+          gt_record.words.size() <= i) continue;
       absl::StrAppend(&orig_tokens, " ", gt_record.tokens[i]);
       absl::StrAppend(&orig_words, " ", gt_record.words[i]);
     }
